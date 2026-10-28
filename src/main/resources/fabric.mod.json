@@ -1,0 +1,34 @@
+{
+	"schemaVersion": 1,
+	"id": "pvpislifemod",
+	"version": "${version}",
+	"name": "PVPIsLife Timing",
+	"description": "Millisecond timings for jump resets, W taps and S taps. Shows how early or late every reset was, with perfect/early/late classification and session stats.",
+	"authors": [
+		"VitrixDevelopment"
+	],
+	"contact": {
+		"homepage": "https://github.com/VitrixDevelopment/PVPIsLifeMod",
+		"sources": "https://github.com/VitrixDevelopment/PVPIsLifeMod"
+	},
+	"license": "MIT",
+	"icon": "assets/pvpislifemod/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"net.vitrix.pvpislifemod.PvpIsLifeModClient"
+		]
+	},
+	"mixins": [
+		{
+			"config": "pvpislifemod.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.20.1",
+		"minecraft": "~26.3",
+		"java": ">=25",
+		"fabric-api": "*"
+	}
+}
