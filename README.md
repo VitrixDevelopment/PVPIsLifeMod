@@ -7,23 +7,33 @@ reset by — or how early you were.
 The box lives in the top left corner of the screen and switches to whichever technique you performed last
 (you can also lock it to one technique).
 
+![HUD box following the last technique](docs/hud-preview-auto.png)
+
+![HUD box locked to jump resets](docs/hud-preview-jump.png)
+
 ```
-┌───────────────────────────────┐
-│ W TAP          AUTO           │   <- technique + mode indicator
-│ LATE +37 ms                   │   <- the result, coloured green / amber / red
-│ tap 62 ms · after your hit    │   <- how long you held the tap, which hit it was timed against
-│ last +12 -9 +37 +4 -21        │   <- last attempts (signed ms)
-│ 14 resets · 43% perfect · avg 31 ms
-└───────────────────────────────┘
+┌────────────────────────────────────┐
+│ JUMP RESET     LOCKED              │  <- technique + AUTO / LOCKED
+│ EARLY -96 ms                       │  <- result, green / amber / red
+│ early by 96 ms · hit taken         │  <- how far off, in words, + what it was timed against
+│ last +140 +8 -96                   │  <- last attempts (signed ms), coloured
+│ 3 resets · 33% perfect · avg 81 ms │  <- session summary
+└────────────────────────────────────┘
 ```
+
+Both images above are real screenshots taken by the automated client game test
+(`./gradlew runClientGameTest`) running Minecraft 26.3 with the mod loaded.
 
 ## What it measures
 
 | Technique | Timed from | Valid when |
 | --- | --- | --- |
 | **Jump reset** | the moment you press jump on the ground | you pressed jump ≤ 250 ms from a hit you **took** |
-| **W tap** | the moment you **release** W | you press W again within 500 ms (a real tap, not just stopping) and a hit is within 250 ms |
-| **S tap** | the moment you **press** S | you release S within 500 ms and a hit is within 250 ms |
+| **W tap** | the moment you **release** W | you press W again within 500 ms (a real tap, not just stopping to walk) and a hit is within 250 ms |
+| **S tap** | the moment you **press** S | you release S within 500 ms (a long hold is not a tap) and a hit is within 250 ms |
+
+W taps are timed from the **release**, because that is the moment sprint is actually cancelled and the
+reset starts; the box also tells you how long you held the tap.
 
 Sign convention:
 

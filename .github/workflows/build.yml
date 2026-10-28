@@ -54,7 +54,7 @@ jobs:
       # Mirror the interesting part of the log into an issue comment so it can be read
       # with the REST API from any environment.
       - name: publish build log
-        if: always()
+        if: steps.build.outcome != 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OUTCOME: ${{ steps.build.outcome }}
@@ -133,29 +133,34 @@ jobs:
           if-no-files-found: warn
 
       - name: publish game test result
-        if: always()
+        if: steps.gametest.outcome != 'success' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OUTCOME: ${{ steps.gametest.outcome }}
           REPO: ${{ github.repository }}
         run: |
           test -f gametest.log || echo "no log" > gametest.log
-          {
-            echo "### client game test \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — **${OUTCOME}**"
-            echo ""
-            echo '```text'
-            tail -c 30000 gametest.log
-            echo '```'
-          } > gt-comment.md
-          gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@gt-comment.md
+
+          if [ "$OUTCOME" != "success" ]; then
+            {
+              echo "### client game test \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — **${OUTCOME}**"
+              echo ""
+              echo '```text'
+              tail -c 30000 gametest.log
+              echo '```'
+            } > gt-comment.md
+            gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@gt-comment.md
+          fi
 
           for PREVIEW in $(find . -name 'pvpislifemod-preview-*.png' | sort); do
-            echo "### HUD preview from the game test: ${PREVIEW}" > preview.md
-            echo "" >> preview.md
-            echo '```text' >> preview.md
-            base64 -w0 "$PREVIEW" >> preview.md
-            echo "" >> preview.md
-            echo '```' >> preview.md
+            {
+              echo "### HUD preview from the game test: ${PREVIEW}"
+              echo ""
+              echo '```text'
+              base64 -w0 "$PREVIEW"
+              echo ""
+              echo '```'
+            } > preview.md
             gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@preview.md
           done
 
