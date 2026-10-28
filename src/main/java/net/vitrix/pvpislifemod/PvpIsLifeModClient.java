@@ -149,13 +149,13 @@ public final class PvpIsLifeModClient implements ClientModInitializer {
 	public static void onKeyMappingChanged(KeyMapping mapping, boolean down) {
 		Minecraft minecraft = Minecraft.getInstance();
 
-		if (minecraft == null || minecraft.player == null || minecraft.gui == null) {
+		if (minecraft == null || minecraft.player == null) {
 			return;
 		}
 
 		// Only trust transitions made while playing. Opening a screen or losing window focus makes the
 		// game release / re-apply every key at once, which must never be mistaken for a real tap.
-		if (minecraft.mouseHandler == null || !minecraft.mouseHandler.isMouseGrabbed() || minecraft.gui.screen() != null) {
+		if (minecraft.mouseHandler == null || !minecraft.mouseHandler.isMouseGrabbed() || ClientCompat.isScreenOpen(minecraft)) {
 			return;
 		}
 
@@ -179,7 +179,7 @@ public final class PvpIsLifeModClient implements ClientModInitializer {
 				if (tap != null) {
 					ENGINE.onAction(TimingMode.WTAP, tap.startNanos(), tap.holdMs(), true, now);
 				}
-			} else if (player.isSprinting() || player.input.keyPresses.forward()) {
+			} else if (player.isSprinting() || options.keyUp.isDown()) {
 				// The tap starts when W is released; it only becomes a tap if W is pressed again soon.
 				TAPS.onWRelease(now);
 			}
@@ -189,7 +189,7 @@ public final class PvpIsLifeModClient implements ClientModInitializer {
 
 		if (mapping == options.keyDown) {
 			if (down) {
-				if (options.keyUp.isDown() || player.isSprinting() || player.input.keyPresses.forward()) {
+				if (options.keyUp.isDown() || player.isSprinting()) {
 					TAPS.onSPress(now);
 				}
 			} else {

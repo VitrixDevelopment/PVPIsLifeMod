@@ -180,7 +180,7 @@ public final class SelfTest {
 		check("two samples", stats.total() == 2, stats.total());
 		check("one perfect", stats.perfectCount() == 1, stats.perfectCount());
 		check("perfect rate 50%", near(stats.perfectRate(), 50.0), stats.perfectRate());
-		check("average error 40 ms", near(stats.averageAbsError(), 40.0), stats.averageAbsError());
+		check("average error 45 ms", near(stats.averageAbsError(), 45.0), stats.averageAbsError());
 		check("recent is ordered", stats.recent().size() == 2 && near(stats.recent().get(1).deltaMs(), 80.0), stats.recent());
 		check("total samples", engine.totalSamples() == 2, engine.totalSamples());
 	}

@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
+import net.vitrix.pvpislifemod.ClientCompat;
 import net.vitrix.pvpislifemod.ModConfig;
 import net.vitrix.pvpislifemod.PvpIsLifeModClient;
 import net.vitrix.pvpislifemod.timing.HudMode;
@@ -59,12 +60,12 @@ public final class TimingHud implements HudElement {
 			return;
 		}
 
-		if (minecraft.gui == null || minecraft.gui.screen() != null) {
+		if (ClientCompat.isScreenOpen(minecraft)) {
 			return;
 		}
 
 		// The vanilla F3 overlay owns the top left corner, do not fight it for space.
-		if (minecraft.gui.hud.getDebugOverlay().showDebugScreen()) {
+		if (ClientCompat.isDebugOverlayShown(minecraft)) {
 			return;
 		}
 
