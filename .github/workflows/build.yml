@@ -74,7 +74,18 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') && steps.build.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release create "${GITHUB_REF_NAME}" build/libs/*.jar --title "PVPIsLife Timing ${GITHUB_REF_NAME}" --generate-notes
+        run: |
+          ls -l build/libs
+          # ship the mod jar (and its sources jar) with a stable name
+          JAR=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
+          cp "$JAR" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar"
+          gh release create "${GITHUB_REF_NAME}" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar" \
+            --title "PVPIsLife Timing ${GITHUB_REF_NAME}" \
+            --notes "Drop the jar into your Fabric 26.x mods folder (requires Fabric API and Java 25).
+
+* Timing box in the top left for jump resets, W taps and S taps
+* Shows how many ms you were early (\`-\`) or late (\`+\`), with PERFECT / EARLY / LATE
+* \`[\` hud, \`]\` cycle technique, \`\\\` perfect window, \`R\` reset stats (rebindable)" 
 
       - name: fail the job when the build failed
         if: steps.build.outcome != 'success'
