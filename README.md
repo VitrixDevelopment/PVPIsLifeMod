@@ -90,6 +90,12 @@ Because the reference is the moment *your* client received the damage packet, th
 reaction time you actually had. Jump resets are only scored when you jump from the ground (an air jump does
 nothing, so it cannot reset anything).
 
+## Download
+
+The built mod is committed at [`dist/pvpislifemod-1.0.0-mc26.3.jar`](dist/pvpislifemod-1.0.0-mc26.3.jar)
+and attached to the [v1.0.0 release](https://github.com/VitrixDevelopment/PVPIsLifeMod/releases/latest).
+Drop it into `.minecraft/mods` next to Fabric API. Client side only.
+
 ## Building
 
 ```bash
