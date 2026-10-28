@@ -76,16 +76,26 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ls -l build/libs
-          # ship the mod jar (and its sources jar) with a stable name
           JAR=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
           cp "$JAR" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar"
+          cat > release-notes.md <<'NOTES'
+          Drop the jar into your Fabric 26.x mods folder (Fabric Loader 0.18+, Fabric API, Java 25).
+
+          ### What it shows
+          - A timing box in the top left for **jump resets**, **W taps** and **S taps**
+          - How many ms you were early (-) or late (+), plus PERFECT / EARLY / LATE
+          - Recent attempts and a session summary (perfect rate, average error)
+
+          ### Key binds
+          `[` toggle HUD · `]` cycle technique · `\` perfect window · `R` reset stats
+          (all rebindable under Controls → Key Binds → PVPIsLife Timing)
+
+          Requires the client side only; servers do not need the mod.
+          NOTES
+          sed -i 's/^          //' release-notes.md
           gh release create "${GITHUB_REF_NAME}" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar" \
             --title "PVPIsLife Timing ${GITHUB_REF_NAME}" \
-            --notes "Drop the jar into your Fabric 26.x mods folder (requires Fabric API and Java 25).
-
-* Timing box in the top left for jump resets, W taps and S taps
-* Shows how many ms you were early (\`-\`) or late (\`+\`), with PERFECT / EARLY / LATE
-* \`[\` hud, \`]\` cycle technique, \`\\\` perfect window, \`R\` reset stats (rebindable)" 
+            --notes-file release-notes.md
 
       - name: fail the job when the build failed
         if: steps.build.outcome != 'success'
