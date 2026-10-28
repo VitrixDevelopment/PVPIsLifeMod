@@ -64,3 +64,16 @@ tasks.named('check') {
 tasks.named('test') {
 	failOnNoDiscoveredTests = false
 }
+
+// Client game tests: they boot a real Minecraft 26.3 client, so this is also the check that
+// the mixins apply and that the HUD box renders. Run with ./gradlew runClientGameTest
+// (headless CI needs xvfb + software GL).
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "pvpislifemod-gametest"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}

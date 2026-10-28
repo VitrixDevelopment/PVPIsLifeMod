@@ -35,20 +35,25 @@ public final class TimingHud implements HudElement {
 
 	private static final double SAMPLE_VISIBLE_MS = 10_000.0;
 	private static final double FLASH_MS = 350.0;
+	private static final int MAX_CONSECUTIVE_FAILURES = 20;
 
-	private boolean broken;
+	private int failures;
 
 	@Override
 	public void extractRenderState(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker) {
-		if (this.broken) {
+		// A HUD element must never be able to crash the game. A handful of failures in a row means
+		// something is systematically wrong, so the box keeps out of the way after that.
+		if (this.failures >= MAX_CONSECUTIVE_FAILURES) {
 			return;
 		}
 
 		try {
 			this.render(graphics);
+			this.failures = 0;
 		} catch (Throwable throwable) {
-			this.broken = true;
-			PvpIsLifeModClient.LOGGER.error("Timing HUD disabled after an error", throwable);
+			if (this.failures++ == 0) {
+				PvpIsLifeModClient.LOGGER.error("Timing HUD failed to render, hiding it after {} more errors", MAX_CONSECUTIVE_FAILURES, throwable);
+			}
 		}
 	}
 
@@ -180,7 +185,9 @@ public final class TimingHud implements HudElement {
 			return SampleKind.PERFECT.color();
 		}
 
-		if (engine.sinceLastTakenMs(now) <= FLASH_MS) {
+		double sinceHit = engine.sinceLastTakenMs(now);
+
+		if (sinceHit >= 0.0 && sinceHit <= FLASH_MS) {
 			// you just got hit - the box lights up so you can see the moment you are timing against
 			return 0xFFFFFFFF;
 		}
