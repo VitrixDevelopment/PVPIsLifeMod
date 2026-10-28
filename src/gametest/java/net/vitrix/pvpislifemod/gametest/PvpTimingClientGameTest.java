@@ -108,8 +108,21 @@ public class PvpTimingClientGameTest implements FabricClientGameTest {
 			throw new IllegalStateException("expected exactly one late jump");
 		}
 
-		if (engine.stats(TimingMode.WTAP).last().kind() != SampleKind.PERFECT) {
-			throw new IllegalStateException("expected the W tap to be perfect, got " + engine.stats(TimingMode.WTAP).last().kind());
+		// first W tap is 31 ms (+ within the 50 ms window), second one 58 ms (late)
+		if (engine.stats(TimingMode.WTAP).total() != 2) {
+			throw new IllegalStateException("expected 2 W tap samples, got " + engine.stats(TimingMode.WTAP).total());
+		}
+
+		if (engine.stats(TimingMode.WTAP).perfectCount() != 1) {
+			throw new IllegalStateException("expected one perfect W tap, got " + engine.stats(TimingMode.WTAP).perfectCount());
+		}
+
+		if (engine.stats(TimingMode.WTAP).last().kind() != SampleKind.LATE) {
+			throw new IllegalStateException("expected the second W tap to be late, got " + engine.stats(TimingMode.WTAP).last().kind());
+		}
+
+		if (engine.stats(TimingMode.STAP).total() != 1) {
+			throw new IllegalStateException("expected 1 S tap sample, got " + engine.stats(TimingMode.STAP).total());
 		}
 
 		if (client.player == null) {
