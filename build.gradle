@@ -59,3 +59,8 @@ tasks.register('selfTest', JavaExec) {
 tasks.named('check') {
 	dependsOn tasks.named('selfTest')
 }
+
+// The self test is a plain main() runner, not a JUnit suite, so 'test' has nothing to discover.
+tasks.named('test') {
+	failOnNoDiscoveredTests = false
+}
