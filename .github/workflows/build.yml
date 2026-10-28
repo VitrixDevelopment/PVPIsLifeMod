@@ -110,8 +110,8 @@ jobs:
           MESA_GL_VERSION_OVERRIDE: '4.6'
         run: |
           set -o pipefail
-          xvfb-run -a --server-args="-screen 0 1280x720x24" \
-            ./gradlew runClientGameTest --stacktrace --info --console=plain --no-daemon 2>&1 | tee gametest.log
+          timeout --signal=INT 780 xvfb-run -a --server-args="-screen 0 1280x720x24" \
+            ./gradlew runClientGameTest --stacktrace --console=plain --no-daemon 2>&1 | tee gametest.log
 
       - name: upload screenshots
         if: always()
