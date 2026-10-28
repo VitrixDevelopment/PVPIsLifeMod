@@ -95,8 +95,15 @@ jobs:
           java-version: '25'
           distribution: 'microsoft'
 
-      - name: install xvfb
-        run: sudo apt-get update && sudo apt-get install -y xvfb libgl1-mesa-dri mesa-utils
+      - name: install virtual display + software GL/Vulkan
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils mesa-vulkan-drivers vulkan-tools libglu1-mesa
+
+      - name: show graphics capabilities
+        run: |
+          xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" glxinfo -B || true
+          vulkaninfo --summary || true
 
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
@@ -106,11 +113,13 @@ jobs:
         continue-on-error: true
         env:
           LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: 'llvmpipe'
+          MESA_GL_VERSION_OVERRIDE: '4.5'
+          MESA_GLSL_VERSION_OVERRIDE: '450'
           ALSOFT_DRIVERS: 'null'
-          MESA_GL_VERSION_OVERRIDE: '4.6'
         run: |
           set -o pipefail
-          timeout --signal=INT 780 xvfb-run -a --server-args="-screen 0 1280x720x24" \
+          timeout --signal=INT 600 xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
             ./gradlew runClientGameTest --stacktrace --console=plain --no-daemon 2>&1 | tee gametest.log
 
       - name: upload screenshots
