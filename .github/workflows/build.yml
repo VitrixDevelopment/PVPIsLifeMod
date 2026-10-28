@@ -128,8 +128,8 @@ jobs:
         with:
           name: client-gametest-screenshots
           path: |
-            build/pvpislifemod-preview.png
-            build/run/clientGameTest/screenshots/*.png
+            **/pvpislifemod-preview.png
+            **/screenshots/*.png
           if-no-files-found: warn
 
       - name: publish game test result
@@ -149,11 +149,12 @@ jobs:
           } > gt-comment.md
           gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@gt-comment.md
 
-          if [ -f build/pvpislifemod-preview.png ]; then
-            echo "### HUD preview (cropped screenshot from the game test)" > preview.md
+          PREVIEW=$(find . -name pvpislifemod-preview.png -print -quit)
+          if [ -n "$PREVIEW" ]; then
+            echo "### HUD preview (cropped screenshot from the game test, base64 png: $PREVIEW)" > preview.md
             echo "" >> preview.md
             echo '```text' >> preview.md
-            base64 -w0 build/pvpislifemod-preview.png >> preview.md
+            base64 -w0 "$PREVIEW" >> preview.md
             echo "" >> preview.md
             echo '```' >> preview.md
             gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@preview.md
