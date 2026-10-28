@@ -128,7 +128,7 @@ jobs:
         with:
           name: client-gametest-screenshots
           path: |
-            **/pvpislifemod-preview.png
+            **/pvpislifemod-preview-*.png
             **/screenshots/*.png
           if-no-files-found: warn
 
@@ -149,16 +149,15 @@ jobs:
           } > gt-comment.md
           gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@gt-comment.md
 
-          PREVIEW=$(find . -name pvpislifemod-preview.png -print -quit)
-          if [ -n "$PREVIEW" ]; then
-            echo "### HUD preview (cropped screenshot from the game test, base64 png: $PREVIEW)" > preview.md
+          for PREVIEW in $(find . -name 'pvpislifemod-preview-*.png' | sort); do
+            echo "### HUD preview from the game test: ${PREVIEW}" > preview.md
             echo "" >> preview.md
             echo '```text' >> preview.md
             base64 -w0 "$PREVIEW" >> preview.md
             echo "" >> preview.md
             echo '```' >> preview.md
             gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@preview.md
-          fi
+          done
 
       - name: fail when the client game test failed
         if: steps.gametest.outcome != 'success'

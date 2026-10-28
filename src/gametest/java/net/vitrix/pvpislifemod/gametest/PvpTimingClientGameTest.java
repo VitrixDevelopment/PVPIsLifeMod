@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.Minecraft;
 
 import net.vitrix.pvpislifemod.PvpIsLifeModClient;
+import net.vitrix.pvpislifemod.timing.HudMode;
 import net.vitrix.pvpislifemod.timing.SampleKind;
 import net.vitrix.pvpislifemod.timing.TimingEngine;
 import net.vitrix.pvpislifemod.timing.TimingMode;
@@ -39,8 +40,12 @@ public class PvpTimingClientGameTest implements FabricClientGameTest {
 
 			context.waitTicks(3);
 
-			Path screenshot = context.takeScreenshot("pvpislifemod-hud");
-			cropPreview(screenshot);
+			// AUTO follows the last technique performed (the S tap), the second shot is locked to jump resets.
+			cropPreview(context.takeScreenshot("pvpislifemod-hud-auto"), "build/pvpislifemod-preview-auto.png");
+
+			context.runOnClient(client -> PvpIsLifeModClient.config().mode = HudMode.JUMP);
+			context.waitTicks(3);
+			cropPreview(context.takeScreenshot("pvpislifemod-hud-jump"), "build/pvpislifemod-preview-jump.png");
 		}
 	}
 
@@ -73,6 +78,16 @@ public class PvpTimingClientGameTest implements FabricClientGameTest {
 		engine.onAction(TimingMode.WTAP, now + ms(3_031), 64.0, true, now + ms(3_500));
 		engine.tick(now + ms(4_000));
 
+		// second W tap, this one 58 ms late
+		engine.onHit(true, now + ms(4_100));
+		engine.onAction(TimingMode.WTAP, now + ms(4_158), 41.0, true, now + ms(4_500));
+		engine.tick(now + ms(5_000));
+
+		// S tap 22 ms after the hit, held for 70 ms
+		engine.onHit(true, now + ms(5_200));
+		engine.onAction(TimingMode.STAP, now + ms(5_222), 70.0, true, now + ms(5_600));
+		engine.tick(now + ms(6_000));
+
 		if (engine.stats(TimingMode.JUMP).total() != 3) {
 			throw new IllegalStateException("expected 3 jump samples but got " + engine.stats(TimingMode.JUMP).total());
 		}
@@ -103,10 +118,10 @@ public class PvpTimingClientGameTest implements FabricClientGameTest {
 	}
 
 	/**
-	 * Crops the top left corner of the screenshot into {@code build/pvpislifemod-preview.png} and
-	 * prints it as base64 so CI can republish it where it is readable.
+	 * Crops the top left corner of the screenshot and prints it as base64 so CI can republish it
+	 * where it is readable.
 	 */
-	private static void cropPreview(Path screenshot) {
+	private static void cropPreview(Path screenshot, String outputPath) {
 		try {
 			BufferedImage image = ImageIO.read(screenshot.toFile());
 
@@ -115,16 +130,16 @@ public class PvpTimingClientGameTest implements FabricClientGameTest {
 				return;
 			}
 
-			int width = Math.min(image.getWidth(), 360);
-			int height = Math.min(image.getHeight(), 160);
+			int width = Math.min(image.getWidth(), 520);
+			int height = Math.min(image.getHeight(), 220);
 			BufferedImage cropped = image.getSubimage(0, 0, width, height);
 
-			Path output = Path.of("build", "pvpislifemod-preview.png");
-			Files.createDirectories(output.getParent());
+			Path output = Path.of(outputPath);
+			Files.createDirectories(output.getParent() == null ? Path.of(".") : output.getParent());
 			ImageIO.write(cropped, "png", output.toFile());
 
-			System.out.println("PVPISLIFE_PREVIEW_FILE: " + output.toAbsolutePath() + " (" + Files.size(output) + " bytes)");
-			System.out.println("PVPISLIFE_PREVIEW_BASE64_BEGIN");
+			System.out.println("PVPISLIFE_PREVIEW_FILE " + output.toAbsolutePath() + " (" + Files.size(output) + " bytes)");
+			System.out.println("PVPISLIFE_PREVIEW_BASE64_BEGIN " + output.getFileName());
 			System.out.println(Base64.getEncoder().encodeToString(Files.readAllBytes(output)));
 			System.out.println("PVPISLIFE_PREVIEW_BASE64_END");
 		} catch (Exception exception) {

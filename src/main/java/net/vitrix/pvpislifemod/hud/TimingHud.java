@@ -172,7 +172,8 @@ public final class TimingHud implements HudElement {
 
 		// 5) summary line, or the controls hint until the first sample exists
 		if (config.showStats && stats.total() > 0) {
-			String summary = stats.total() + " resets · " + Math.round(stats.perfectRate()) + "% perfect · avg "
+			String summary = stats.total() + (stats.total() == 1 ? " reset · " : " resets · ")
+					+ Math.round(stats.perfectRate()) + "% perfect · avg "
 					+ Math.round(stats.averageAbsError()) + " ms";
 			rows.add(new Row(List.of(new Seg(summary, DIM))));
 		} else {
