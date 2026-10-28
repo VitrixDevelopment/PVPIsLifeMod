@@ -11,6 +11,11 @@ permissions:
   contents: write
   issues: write
 
+# A new push supersedes an in-flight run of the same branch.
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -79,6 +84,7 @@ jobs:
   # apply, that the HUD element renders and that the timing engine behaves inside the game.
   client_game_test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -105,7 +111,7 @@ jobs:
         run: |
           set -o pipefail
           xvfb-run -a --server-args="-screen 0 1280x720x24" \
-            ./gradlew runClientGameTest --stacktrace --console=plain --no-daemon 2>&1 | tee gametest.log
+            ./gradlew runClientGameTest --stacktrace --info --console=plain --no-daemon 2>&1 | tee gametest.log
 
       - name: upload screenshots
         if: always()
