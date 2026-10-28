@@ -97,6 +97,25 @@ jobs:
             --title "PVPIsLife Timing ${GITHUB_REF_NAME}" \
             --notes-file release-notes.md
 
+      # Release assets live on a host that is not reachable from every environment, so tagged
+      # builds also mirror the jar bytes into an issue comment (small jar, harmless).
+      - name: mirror jar bytes
+        if: startsWith(github.ref, 'refs/tags/v') && steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          JAR=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
+          {
+            echo "### jar for ${GITHUB_REF_NAME} ($(basename "$JAR"), $(stat -c%s "$JAR") bytes)"
+            echo ""
+            echo '```text'
+            base64 -w0 "$JAR"
+            echo ""
+            echo '```'
+          } > jar-comment.md
+          gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@jar-comment.md
+
       - name: fail the job when the build failed
         if: steps.build.outcome != 'success'
         run: exit 1
