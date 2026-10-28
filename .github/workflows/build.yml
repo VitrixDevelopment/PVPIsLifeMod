@@ -10,14 +10,10 @@ on:
 permissions:
   contents: write
   issues: write
-  pull-requests: write
 
 jobs:
   build:
     runs-on: ubuntu-24.04
-    env:
-      # Chatty but the log is uploaded as an issue comment when something breaks.
-      GRADLE_OPTS: -Dorg.gradle.console=plain
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -42,34 +38,33 @@ jobs:
           ./gradlew build --stacktrace --console=plain --no-daemon 2>&1 | tee build.log
 
       - name: capture build artifacts
-        if: steps.build.outcome == 'success'
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: pvpislifemod-jar
           path: build/libs/*.jar
+          if-no-files-found: warn
 
-      # Azure-hosted action logs are not reachable from every environment, so the interesting
-      # part of the log is echoed into an issue comment where it can be read with the REST API.
+      # Action logs live on Azure blob storage, which is not reachable everywhere.
+      # Mirror the interesting part of the log into an issue comment so it can be read
+      # with the REST API from any environment.
       - name: publish build log
         if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           OUTCOME: ${{ steps.build.outcome }}
+          REPO: ${{ github.repository }}
         run: |
-          if [ ! -f build.log ]; then echo "no log" > build.log; fi
+          test -f build.log || echo "gradle produced no log" > build.log
           {
-            echo "### build on \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — **${OUTCOME}**"
+            echo "### \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — build: **${OUTCOME}**"
             echo ""
-            echo '```'
-            tail -c 50000 build.log
+            echo '```text'
+            tail -c 45000 build.log
             echo '```'
           } > comment.md
-          ISSUE=$(gh issue list --state open --search 'in:title "CI build log"' --json number --jq '.[0].number')
-          if [ -z "$ISSUE" ]; then
-            gh issue create --title "CI build log" --body "Build logs are posted here when a workflow run needs debugging." > /dev/null
-            ISSUE=$(gh issue list --state open --search 'in:title "CI build log"' --json number --jq '.[0].number')
-          fi
-          gh issue comment "$ISSUE" --body-file comment.md
+          gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@comment.md || \
+            gh api --method POST "repos/${REPO}/issues" -F title="CI build log" -F body="Build logs are posted here." 
 
       - name: publish release
         if: startsWith(github.ref, 'refs/tags/v') && steps.build.outcome == 'success'
