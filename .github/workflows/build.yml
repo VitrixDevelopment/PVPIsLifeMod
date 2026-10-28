@@ -93,6 +93,8 @@ jobs:
           Requires the client side only; servers do not need the mod.
           NOTES
           sed -i 's/^          //' release-notes.md
+          # keep re-tags idempotent
+          gh release delete "${GITHUB_REF_NAME}" --yes --cleanup-tag=false || true
           gh release create "${GITHUB_REF_NAME}" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar" \
             --title "PVPIsLife Timing ${GITHUB_REF_NAME}" \
             --notes-file release-notes.md
