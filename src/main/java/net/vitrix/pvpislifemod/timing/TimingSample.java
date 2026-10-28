@@ -49,6 +49,15 @@ public record TimingSample(
 		return Math.round(abs) + " ms";
 	}
 
+	/** Plain language version of the error, e.g. {@code late by 37 ms} or {@code early by 12.5 ms}. */
+	public String describeError() {
+		return switch (this.kind) {
+			case PERFECT -> "on time";
+			case EARLY -> "early by " + this.absoluteText();
+			case LATE -> "late by " + this.absoluteText();
+		};
+	}
+
 	/** Age of this sample in milliseconds. */
 	public double ageMs(long nowNanos) {
 		return (nowNanos - this.actionNanos) / TimingEngine.NANOS_PER_MS;

@@ -153,7 +153,7 @@ jobs:
             echo "### HUD preview (cropped screenshot from the game test)" > preview.md
             echo "" >> preview.md
             echo '```text' >> preview.md
-            base64 -w0 build/pvpislifemod-preview.png | head -c 40000 >> preview.md
+            base64 -w0 build/pvpislifemod-preview.png >> preview.md
             echo "" >> preview.md
             echo '```' >> preview.md
             gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@preview.md

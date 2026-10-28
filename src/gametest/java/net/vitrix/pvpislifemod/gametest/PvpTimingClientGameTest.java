@@ -115,15 +115,15 @@ public class PvpTimingClientGameTest implements FabricClientGameTest {
 				return;
 			}
 
-			int width = Math.min(image.getWidth(), 460);
-			int height = Math.min(image.getHeight(), 200);
+			int width = Math.min(image.getWidth(), 360);
+			int height = Math.min(image.getHeight(), 160);
 			BufferedImage cropped = image.getSubimage(0, 0, width, height);
 
 			Path output = Path.of("build", "pvpislifemod-preview.png");
 			Files.createDirectories(output.getParent());
 			ImageIO.write(cropped, "png", output.toFile());
 
-			System.out.println("PVPISLIFE_PREVIEW_FILE: " + output.toAbsolutePath());
+			System.out.println("PVPISLIFE_PREVIEW_FILE: " + output.toAbsolutePath() + " (" + Files.size(output) + " bytes)");
 			System.out.println("PVPISLIFE_PREVIEW_BASE64_BEGIN");
 			System.out.println(Base64.getEncoder().encodeToString(Files.readAllBytes(output)));
 			System.out.println("PVPISLIFE_PREVIEW_BASE64_END");

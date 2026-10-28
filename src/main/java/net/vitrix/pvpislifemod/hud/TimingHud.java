@@ -131,18 +131,20 @@ public final class TimingHud implements HudElement {
 			rows.add(new Row(List.of(new Seg("waiting for a hit", DIM))));
 		}
 
-		// 3) detail line: tap duration + which hit was used as reference
+		// 3) detail line: how far off you were in words, tap duration, which hit it was timed against
 		if (fresh) {
-			StringBuilder detail = new StringBuilder();
+			StringBuilder detail = new StringBuilder(last.describeError());
 
 			if (last.hasHold()) {
-				detail.append("tap ").append(Math.round(last.holdMs())).append(" ms · ");
+				detail.append(" · tap ").append(Math.round(last.holdMs())).append(" ms");
 			}
 
-			if (config.mode == HudMode.AUTO && mode != TimingMode.JUMP) {
-				detail.append(last.referenceTaken() ? "after hit taken" : "after your hit");
+			detail.append(" · ");
+
+			if (last.referenceTaken()) {
+				detail.append("hit taken");
 			} else {
-				detail.append(last.referenceTaken() ? "hit taken" : "hit dealt");
+				detail.append("your hit");
 			}
 
 			rows.add(new Row(List.of(new Seg(detail.toString(), DIM))));
