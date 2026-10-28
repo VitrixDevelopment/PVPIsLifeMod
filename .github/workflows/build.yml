@@ -9,10 +9,15 @@ on:
 
 permissions:
   contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      # Chatty but the log is uploaded as an issue comment when something breaks.
+      GRADLE_OPTS: -Dorg.gradle.console=plain
     steps:
       - name: checkout repository
         uses: actions/checkout@v6
@@ -30,16 +35,48 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: build (includes timing engine self test)
-        run: ./gradlew build --stacktrace
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew build --stacktrace --console=plain --no-daemon 2>&1 | tee build.log
 
       - name: capture build artifacts
+        if: steps.build.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: pvpislifemod-jar
           path: build/libs/*.jar
 
+      # Azure-hosted action logs are not reachable from every environment, so the interesting
+      # part of the log is echoed into an issue comment where it can be read with the REST API.
+      - name: publish build log
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.build.outcome }}
+        run: |
+          if [ ! -f build.log ]; then echo "no log" > build.log; fi
+          {
+            echo "### build on \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — **${OUTCOME}**"
+            echo ""
+            echo '```'
+            tail -c 50000 build.log
+            echo '```'
+          } > comment.md
+          ISSUE=$(gh issue list --state open --search 'in:title "CI build log"' --json number --jq '.[0].number')
+          if [ -z "$ISSUE" ]; then
+            gh issue create --title "CI build log" --body "Build logs are posted here when a workflow run needs debugging." > /dev/null
+            ISSUE=$(gh issue list --state open --search 'in:title "CI build log"' --json number --jq '.[0].number')
+          fi
+          gh issue comment "$ISSUE" --body-file comment.md
+
       - name: publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') && steps.build.outcome == 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh release create "${GITHUB_REF_NAME}" build/libs/*.jar --title "PVPIsLife Timing ${GITHUB_REF_NAME}" --generate-notes
+
+      - name: fail the job when the build failed
+        if: steps.build.outcome != 'success'
+        run: exit 1
