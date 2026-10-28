@@ -11,7 +11,7 @@ import net.minecraft.client.Minecraft;
  * {@code Minecraft.gui.hud.getDebugOverlay()} in 26.2. Both are looked up reflectively once,
  * so the same jar keeps working on 26.1, 26.2 and 26.3.
  */
-final class ClientCompat {
+public final class ClientCompat {
 	private static boolean resolved;
 	private static Field screenField;
 	private static Field guiField;
@@ -24,7 +24,7 @@ final class ClientCompat {
 	private ClientCompat() {
 	}
 
-	static boolean isScreenOpen(Minecraft minecraft) {
+	public static boolean isScreenOpen(Minecraft minecraft) {
 		resolve();
 
 		try {
@@ -43,7 +43,7 @@ final class ClientCompat {
 		return false;
 	}
 
-	static boolean isDebugOverlayShown(Minecraft minecraft) {
+	public static boolean isDebugOverlayShown(Minecraft minecraft) {
 		resolve();
 
 		try {
