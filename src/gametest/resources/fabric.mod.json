@@ -1,0 +1,22 @@
+{
+	"schemaVersion": 1,
+	"id": "pvpislifemod-gametest",
+	"version": "1.0.0",
+	"name": "PVPIsLife Timing Game Tests",
+	"description": "Client game tests for PVPIsLife Timing.",
+	"authors": [
+		"VitrixDevelopment"
+	],
+	"license": "MIT",
+	"environment": "client",
+	"entrypoints": {
+		"fabric-client-gametest": [
+			"net.vitrix.pvpislifemod.gametest.PvpTimingClientGameTest"
+		]
+	},
+	"depends": {
+		"pvpislifemod": "*",
+		"fabricloader": ">=0.18.0",
+		"minecraft": ">=26.1 <26.4"
+	}
+}

@@ -1,0 +1,211 @@
+name: build
+
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ "v*" ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+# A new push supersedes an in-flight run of the same branch.
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: validate gradle wrapper
+        uses: gradle/actions/wrapper-validation@v6
+
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: build (includes timing engine self test)
+        id: build
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./gradlew build --stacktrace --console=plain --no-daemon 2>&1 | tee build.log
+
+      - name: capture build artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pvpislifemod-jar
+          path: build/libs/*.jar
+          if-no-files-found: warn
+
+      # Action logs live on Azure blob storage, which is not reachable everywhere.
+      # Mirror the interesting part of the log into an issue comment so it can be read
+      # with the REST API from any environment.
+      - name: publish build log
+        if: steps.build.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.build.outcome }}
+          REPO: ${{ github.repository }}
+        run: |
+          test -f build.log || echo "gradle produced no log" > build.log
+          {
+            echo "### \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — build: **${OUTCOME}**"
+            echo ""
+            echo '```text'
+            tail -c 45000 build.log
+            echo '```'
+          } > comment.md
+          gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@comment.md
+
+      - name: publish release
+        if: startsWith(github.ref, 'refs/tags/v') && steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ls -l build/libs
+          JAR=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
+          cp "$JAR" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar"
+          cat > release-notes.md <<'NOTES'
+          Drop the jar into your Fabric 26.x mods folder (Fabric Loader 0.18+, Fabric API, Java 25).
+
+          ### What it shows
+          - A timing box in the top left for **jump resets**, **W taps** and **S taps**
+          - How many ms you were early (-) or late (+), plus PERFECT / EARLY / LATE
+          - Recent attempts and a session summary (perfect rate, average error)
+
+          ### Key binds
+          `[` toggle HUD · `]` cycle technique · `\` perfect window · `R` reset stats
+          (all rebindable under Controls → Key Binds → PVPIsLife Timing)
+
+          Requires the client side only; servers do not need the mod.
+          NOTES
+          sed -i 's/^          //' release-notes.md
+          # keep re-tags idempotent
+          gh release delete "${GITHUB_REF_NAME}" --yes --cleanup-tag=false || true
+          gh release create "${GITHUB_REF_NAME}" "build/libs/pvpislifemod-${GITHUB_REF_NAME#v}-mc26.3.jar" \
+            --title "PVPIsLife Timing ${GITHUB_REF_NAME}" \
+            --notes-file release-notes.md
+
+      # Release assets live on a host that is not reachable from every environment, so tagged
+      # builds also mirror the jar bytes into an issue comment (small jar, harmless).
+      - name: mirror jar bytes
+        if: startsWith(github.ref, 'refs/tags/v') && steps.build.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          JAR=$(find build/libs -maxdepth 1 -name '*.jar' ! -name '*-sources.jar' ! -name '*-dev.jar' | head -n 1)
+          {
+            echo "### jar for ${GITHUB_REF_NAME} ($(basename "$JAR"), $(stat -c%s "$JAR") bytes)"
+            echo ""
+            echo '```text'
+            base64 -w0 "$JAR"
+            echo ""
+            echo '```'
+          } > jar-comment.md
+          gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@jar-comment.md
+
+      - name: fail the job when the build failed
+        if: steps.build.outcome != 'success'
+        run: exit 1
+
+  # Boots a real Minecraft 26.3 client with the mod installed: this is what proves the mixins
+  # apply, that the HUD element renders and that the timing engine behaves inside the game.
+  client_game_test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v6
+
+      - name: setup jdk
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: 'microsoft'
+
+      - name: install virtual display + software GL/Vulkan
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libgl1-mesa-dri libglx-mesa0 mesa-utils mesa-vulkan-drivers vulkan-tools libglu1-mesa
+
+      - name: show graphics capabilities
+        run: |
+          xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" glxinfo -B || true
+          vulkaninfo --summary || true
+
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: run client game test
+        id: gametest
+        continue-on-error: true
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          MESA_LOADER_DRIVER_OVERRIDE: 'llvmpipe'
+          MESA_GL_VERSION_OVERRIDE: '4.5'
+          MESA_GLSL_VERSION_OVERRIDE: '450'
+          ALSOFT_DRIVERS: 'null'
+        run: |
+          set -o pipefail
+          timeout --signal=INT 600 xvfb-run -a -s "-screen 0 1280x720x24 +extension GLX +render -noreset" \
+            ./gradlew runClientGameTest --stacktrace --console=plain --no-daemon 2>&1 | tee gametest.log
+
+      - name: upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: client-gametest-screenshots
+          path: |
+            **/pvpislifemod-preview-*.png
+            **/screenshots/*.png
+          if-no-files-found: warn
+
+      - name: publish game test result
+        if: steps.gametest.outcome != 'success' || github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          OUTCOME: ${{ steps.gametest.outcome }}
+          REPO: ${{ github.repository }}
+        run: |
+          test -f gametest.log || echo "no log" > gametest.log
+
+          if [ "$OUTCOME" != "success" ]; then
+            {
+              echo "### client game test \`${GITHUB_REF_NAME}\` @ ${GITHUB_SHA:0:7} — **${OUTCOME}**"
+              echo ""
+              echo '```text'
+              tail -c 30000 gametest.log
+              echo '```'
+            } > gt-comment.md
+            gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@gt-comment.md
+          fi
+
+          for PREVIEW in $(find . -name 'pvpislifemod-preview-*.png' | sort); do
+            {
+              echo "### HUD preview from the game test: ${PREVIEW}"
+              echo ""
+              echo '```text'
+              base64 -w0 "$PREVIEW"
+              echo ""
+              echo '```'
+            } > preview.md
+            gh api --method POST "repos/${REPO}/issues/1/comments" -F body=@preview.md
+          done
+
+      - name: fail when the client game test failed
+        if: steps.gametest.outcome != 'success'
+        run: exit 1

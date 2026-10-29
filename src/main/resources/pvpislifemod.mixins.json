@@ -1,0 +1,12 @@
+{
+	"required": true,
+	"package": "net.vitrix.pvpislifemod.mixin",
+	"compatibilityLevel": "JAVA_25",
+	"client": [
+		"KeyMappingMixin",
+		"LivingEntityMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

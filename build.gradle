@@ -1,0 +1,79 @@
+plugins {
+	id 'net.fabricmc.fabric-loom' version "${loom_version}"
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	// Loom adds the Minecraft / Fabric repositories automatically.
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+}
+
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 25
+	it.options.encoding = "UTF-8"
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_25
+	targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+	def archiveName = project.base.archivesName.get()
+
+	from("LICENSE") {
+		rename { "${it}_${archiveName}" }
+	}
+}
+
+// The timing engine is plain Java, so it can be verified without launching the game.
+tasks.register('selfTest', JavaExec) {
+	group = 'verification'
+	description = 'Runs the timing engine self test.'
+	dependsOn tasks.named('testClasses')
+	classpath = sourceSets.test.runtimeClasspath
+	mainClass = 'net.vitrix.pvpislifemod.test.SelfTest'
+}
+
+tasks.named('check') {
+	dependsOn tasks.named('selfTest')
+}
+
+// The self test is a plain main() runner, not a JUnit suite, so 'test' has nothing to discover.
+tasks.named('test') {
+	failOnNoDiscoveredTests = false
+}
+
+// Client game tests: they boot a real Minecraft 26.3 client, so this is also the check that
+// the mixins apply and that the HUD box renders. Run with ./gradlew runClientGameTest
+// (headless CI needs xvfb + software GL).
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = "pvpislifemod-gametest"
+		enableGameTests = false
+		enableClientGameTests = true
+		eula = true
+	}
+}
